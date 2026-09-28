@@ -1,5 +1,9 @@
 using dotenv.net;
+using EscritorioVirtual.API.Middlewares;
+using EscritorioVirtual.Application.DependencyInjection;
 using EscritorioVirtual.Infrastructure.Configurations;
+using EscritorioVirtual.Infrastructure.Extensions;
+using EscritorioVirtual.Infrastructure.Persistence;
 using EscritorioVirtual.Infrastructure.Persistence.Contexts;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,12 +14,9 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddEnvironmentVariables();
 
 // Add services to the container.
-
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-// builder.Services.AddOpenApi();
 
 builder.Services.AddCors(options =>
 {
@@ -36,9 +37,17 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddOidcAuthentication(builder.Configuration);
 
+builder.Services.ConfigureMediatr();
+builder.Services.AddInfrastructureServices();
+
 var app = builder.Build();
 
+// Garante a criação automática das tabelas mapeadas sem depender de DbSet no AppDbContext nem migrations manuais
+await app.Services.EnsureDatabaseAndTablesCreatedAsync();
+
 // Configure the HTTP request pipeline.
+app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -51,6 +60,8 @@ app.UseCors();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.UseMiddleware<WorkspaceTenantMiddleware>();
 
 try
 {

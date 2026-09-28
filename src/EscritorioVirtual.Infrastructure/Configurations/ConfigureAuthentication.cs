@@ -1,6 +1,5 @@
 using System.Security.Claims;
-using EscritorioVirtual.Domain.AggregateRoot;
-using EscritorioVirtual.Infrastructure.Persistence.Contexts;
+using EscritorioVirtual.Application.Administracao.Usuarios.Interfaces;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.Extensions.Configuration;
@@ -40,33 +39,16 @@ public static class ConfigureAuthentication
             {
                 OnTokenValidated = async context =>
                 {
-                    var dbContext = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
+                    var usuarioRepository = context.HttpContext.RequestServices.GetRequiredService<IUsuarioRepository>();
                     var claimsIdentity = context.Principal?.Identity as ClaimsIdentity;
 
                     var subClaim = claimsIdentity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                    if (subClaim == null) return;
+                    if (subClaim == null || !Guid.TryParse(subClaim, out var userId)) return;
 
                     var email = claimsIdentity?.FindFirst(ClaimTypes.Email)?.Value ?? "";
                     var fullName = claimsIdentity?.FindFirst("name")?.Value ?? email;
 
-                    if (Guid.TryParse(subClaim, out var userId))
-                    {
-                        var user = await dbContext.Usuarios.FindAsync(new object[] { userId }, context.HttpContext.RequestAborted);
-                        
-                        if (user == null)
-                        {
-                            user = new Usuario(userId, email, fullName);
-                            dbContext.Usuarios.Add(user);
-                        }
-                        else
-                        {
-                            user.UpdateDetails(email, fullName);
-                            user.UpdateLastLogin();
-                            dbContext.Usuarios.Update(user);
-                        }
-
-                        await dbContext.SaveChangesAsync(context.HttpContext.RequestAborted);
-                    }
+                    await usuarioRepository.SincronizarUsuarioAsync(userId, email, fullName, context.HttpContext.RequestAborted);
                 }
             };
         });
