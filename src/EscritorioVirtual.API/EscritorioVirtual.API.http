@@ -1,0 +1,6 @@
+@EscritorioVirtual.API_HostAddress = http://localhost:5017
+
+GET {{EscritorioVirtual.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

@@ -1,0 +1,17 @@
+<Solution>
+  <Folder Name="/1.Presentation/">
+    <Project Path="src/EscritorioVirtual.API/EscritorioVirtual.API.csproj" />
+  </Folder>
+  <Folder Name="/2.Domain/">
+    <Project Path="src/EscritorioVirtual.Domain/EscritorioVirtual.Domain.csproj" />
+  </Folder>
+  <Folder Name="/3.Application/">
+    <Project Path="src/EscritorioVirtual.Application/EscritorioVirtual.Application.csproj" />
+  </Folder>
+  <Folder Name="/4.Infrastructure/">
+    <Project Path="src/EscritorioVirtual.Infrastructure/EscritorioVirtual.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/5.Events/">
+    <Project Path="src/EscritorioVirtual.Events/EscritorioVirtual.Events.csproj" />
+  </Folder>
+</Solution>
