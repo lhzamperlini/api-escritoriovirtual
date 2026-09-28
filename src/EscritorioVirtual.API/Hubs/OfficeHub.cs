@@ -106,9 +106,34 @@ public class OfficeHub(
         var userId = currentUserService.UserId ?? Guid.Empty;
         var usuario = await usuarioRepository.GetAsync(u => u.Id == userId);
         var senderName = usuario?.FullName ?? "Colega";
-        var mapGroup = $"map_{mapId}";
 
-        await Clients.Group(mapGroup).ReceiveProximityMessage(userId, senderName, text, x, y);
+        // Proximity filtering: up to 10 tiles (320px)
+        var presences = await presenceService.GetMapPresencesAsync(mapId);
+        const double maxDistance = 10 * 32.0;
+
+        var nearbyConnections = presences
+            .Where(p => Math.Sqrt(Math.Pow(p.X - x, 2) + Math.Pow(p.Y - y, 2)) <= maxDistance && !string.IsNullOrEmpty(p.ConnectionId))
+            .Select(p => p.ConnectionId)
+            .ToList();
+
+        if (nearbyConnections.Count > 0)
+        {
+            await Clients.Clients(nearbyConnections).ReceiveProximityMessage(userId, senderName, text, x, y);
+        }
+        else
+        {
+            await Clients.Group($"map_{mapId}").ReceiveProximityMessage(userId, senderName, text, x, y);
+        }
+    }
+
+    public async Task JoinChannel(Guid channelId)
+    {
+        await Groups.AddToGroupAsync(Context.ConnectionId, $"channel_{channelId}");
+    }
+
+    public async Task LeaveChannel(Guid channelId)
+    {
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"channel_{channelId}");
     }
 
     public async Task JoinZone(Guid zoneId)

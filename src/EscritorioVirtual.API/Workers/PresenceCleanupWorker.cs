@@ -1,13 +1,14 @@
 using EscritorioVirtual.API.Hubs;
 using EscritorioVirtual.Application.Common.Interfaces.Services;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace EscritorioVirtual.API.Workers;
 
 public class PresenceCleanupWorker(
-    IPresenceService presenceService,
+    IServiceScopeFactory scopeFactory,
     IHubContext<OfficeHub, IOfficeHubClient> hubContext,
     ILogger<PresenceCleanupWorker> logger) : BackgroundService
 {
@@ -17,6 +18,9 @@ public class PresenceCleanupWorker(
         {
             try
             {
+                using var scope = scopeFactory.CreateScope();
+                var presenceService = scope.ServiceProvider.GetRequiredService<IPresenceService>();
+
                 var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
                 var staleList = await presenceService.GetStalePresencesAsync(15, stoppingToken);
 
