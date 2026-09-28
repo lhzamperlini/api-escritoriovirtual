@@ -40,6 +40,7 @@ builder.Services.AddOidcAuthentication(builder.Configuration);
 
 builder.Services.ConfigureMediatr();
 builder.Services.AddInfrastructureServices();
+builder.Services.AddHostedService<EscritorioVirtual.API.Workers.PresenceCleanupWorker>();
 
 var app = builder.Build();
 

@@ -1,9 +1,14 @@
+using EscritorioVirtual.Application.Administracao.Usuarios.Interfaces;
 using EscritorioVirtual.Application.Common.Interfaces.Services;
+using EscritorioVirtual.Domain.Aggregates.Presence;
 using Microsoft.AspNetCore.SignalR;
 
 namespace EscritorioVirtual.API.Hubs;
 
-public class OfficeHub(ICurrentUserService currentUserService) : Hub<IOfficeHubClient>
+public class OfficeHub(
+    IPresenceService presenceService,
+    IUsuarioRepository usuarioRepository,
+    ICurrentUserService currentUserService) : Hub<IOfficeHubClient>
 {
     public async Task JoinMap(Guid workspaceId, Guid mapId, int startX, int startY)
     {
@@ -11,18 +16,34 @@ public class OfficeHub(ICurrentUserService currentUserService) : Hub<IOfficeHubC
         var mapGroup = $"map_{mapId}";
         await Groups.AddToGroupAsync(Context.ConnectionId, mapGroup);
 
-        await Clients.OthersInGroup(mapGroup).UserJoined(new
+        var usuario = await usuarioRepository.GetAsync(u => u.Id == userId);
+        var fullName = usuario?.FullName ?? "Colega";
+        var avatarConfig = usuario?.AvatarConfig;
+
+        var presence = new UserPresence
         {
-            userId,
-            connectionId = Context.ConnectionId,
-            mapId,
-            x = startX,
-            y = startY,
-            gridX = startX / 32,
-            gridY = startY / 32,
-            status = "available",
-            lastHeartbeat = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
-        });
+            UserId = userId,
+            FullName = fullName,
+            AvatarConfig = avatarConfig,
+            WorkspaceId = workspaceId,
+            MapId = mapId,
+            ConnectionId = Context.ConnectionId,
+            X = startX,
+            Y = startY,
+            GridX = startX / 32,
+            GridY = startY / 32,
+            Status = "available",
+            LastHeartbeat = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+        };
+
+        await presenceService.AddOrUpdatePresenceAsync(presence);
+
+        // Notifica colegas no mapa sobre a entrada
+        await Clients.OthersInGroup(mapGroup).UserJoined(presence);
+
+        // Envia todos os ocupantes já presentes para o recém-conectado
+        var existingPresences = await presenceService.GetMapPresencesAsync(mapId);
+        await Clients.Caller.CurrentMapPresences(existingPresences);
     }
 
     public async Task LeaveMap(Guid mapId)
@@ -30,7 +51,12 @@ public class OfficeHub(ICurrentUserService currentUserService) : Hub<IOfficeHubC
         var userId = currentUserService.UserId ?? Guid.Empty;
         var mapGroup = $"map_{mapId}";
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, mapGroup);
-        await Clients.OthersInGroup(mapGroup).UserLeft(userId);
+
+        if (userId != Guid.Empty)
+        {
+            await presenceService.RemovePresenceAsync(userId);
+            await Clients.OthersInGroup(mapGroup).UserLeft(userId);
+        }
     }
 
     public async Task MoveStart(Guid mapId, string direction)
@@ -44,6 +70,12 @@ public class OfficeHub(ICurrentUserService currentUserService) : Hub<IOfficeHubC
     {
         var userId = currentUserService.UserId ?? Guid.Empty;
         var mapGroup = $"map_{mapId}";
+
+        if (userId != Guid.Empty)
+        {
+            await presenceService.UpdateMovementAsync(userId, mapId, x, y, gridX, gridY, "idle", false);
+        }
+
         await Clients.OthersInGroup(mapGroup).UserMoved(userId, x, y, gridX, gridY, "idle", false);
     }
 
@@ -51,28 +83,51 @@ public class OfficeHub(ICurrentUserService currentUserService) : Hub<IOfficeHubC
     {
         var userId = currentUserService.UserId ?? Guid.Empty;
         var mapGroup = $"map_{mapId}";
+
+        if (userId != Guid.Empty)
+        {
+            await presenceService.UpdateStatusAsync(userId, status);
+        }
+
         await Clients.OthersInGroup(mapGroup).StatusChanged(userId, status);
     }
 
-    public Task Heartbeat()
+    public async Task Heartbeat(Guid mapId)
     {
-        return Task.CompletedTask;
+        var userId = currentUserService.UserId ?? Guid.Empty;
+        if (userId != Guid.Empty)
+        {
+            await presenceService.UpdateHeartbeatAsync(userId);
+        }
     }
 
     public async Task SendProximityMessage(Guid mapId, string text, int x, int y)
     {
         var userId = currentUserService.UserId ?? Guid.Empty;
+        var usuario = await usuarioRepository.GetAsync(u => u.Id == userId);
+        var senderName = usuario?.FullName ?? "Colega";
         var mapGroup = $"map_{mapId}";
-        await Clients.Group(mapGroup).ReceiveProximityMessage(userId, "Colega", text, x, y);
+
+        await Clients.Group(mapGroup).ReceiveProximityMessage(userId, senderName, text, x, y);
     }
 
     public async Task JoinZone(Guid zoneId)
     {
+        var userId = currentUserService.UserId ?? Guid.Empty;
+        if (userId != Guid.Empty)
+        {
+            await presenceService.UpdateZoneAsync(userId, zoneId);
+        }
         await Groups.AddToGroupAsync(Context.ConnectionId, $"zone_{zoneId}");
     }
 
     public async Task LeaveZone(Guid zoneId)
     {
+        var userId = currentUserService.UserId ?? Guid.Empty;
+        if (userId != Guid.Empty)
+        {
+            await presenceService.UpdateZoneAsync(userId, null);
+        }
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"zone_{zoneId}");
     }
 
@@ -104,7 +159,9 @@ public class OfficeHub(ICurrentUserService currentUserService) : Hub<IOfficeHubC
         var userId = currentUserService.UserId ?? Guid.Empty;
         if (userId != Guid.Empty)
         {
-            await Clients.All.UserLeft(userId);
+            // Marca como reconnecting permitindo o Grace Period de 15 segundos antes de remover
+            await presenceService.UpdateStatusAsync(userId, "reconnecting");
+            await Clients.All.StatusChanged(userId, "reconnecting");
         }
         await base.OnDisconnectedAsync(exception);
     }

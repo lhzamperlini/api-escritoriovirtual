@@ -3,6 +3,7 @@ namespace EscritorioVirtual.API.Hubs;
 public interface IOfficeHubClient
 {
     Task AvatarUpdated(Guid userId, object newAvatarConfig);
+    Task CurrentMapPresences(object presences);
     Task UserJoined(object presence);
     Task UserLeft(Guid userId);
     Task UserMoved(Guid userId, int x, int y, int gridX, int gridY, string direction, bool isMoving);
