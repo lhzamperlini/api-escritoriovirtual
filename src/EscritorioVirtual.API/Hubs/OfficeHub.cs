@@ -8,7 +8,8 @@ namespace EscritorioVirtual.API.Hubs;
 public class OfficeHub(
     IPresenceService presenceService,
     IUsuarioRepository usuarioRepository,
-    ICurrentUserService currentUserService) : Hub<IOfficeHubClient>
+    ICurrentUserService currentUserService,
+    IRoomAccessService roomAccessService) : Hub<IOfficeHubClient>
 {
     public async Task JoinMap(Guid workspaceId, Guid mapId, int startX, int startY)
     {
@@ -159,7 +160,9 @@ public class OfficeHub(
     public async Task ToggleRoomLock(Guid mapId, Guid zoneId, bool isLocked)
     {
         var userId = currentUserService.UserId ?? Guid.Empty;
+        roomAccessService.SetRoomLock(zoneId, isLocked, userId);
         await Clients.Group($"map_{mapId}").RoomLockToggled(zoneId, isLocked, userId);
+        await Clients.Group($"zone_{zoneId}").RoomLockToggled(zoneId, isLocked, userId);
     }
 
     public async Task KnockRoom(Guid zoneId, string applicantName)
@@ -170,6 +173,11 @@ public class OfficeHub(
 
     public async Task RespondKnock(Guid zoneId, Guid targetUserId, bool approved)
     {
+        if (approved)
+        {
+            roomAccessService.ApproveGuest(zoneId, targetUserId);
+        }
+
         await Clients.User(targetUserId.ToString()).KnockResponded(zoneId, approved);
         await Clients.Group($"zone_{zoneId}").KnockResponded(zoneId, approved);
     }
