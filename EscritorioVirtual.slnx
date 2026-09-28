@@ -14,4 +14,7 @@
   <Folder Name="/5.Events/">
     <Project Path="src/EscritorioVirtual.Events/EscritorioVirtual.Events.csproj" />
   </Folder>
+  <Folder Name="/6.Tests/">
+    <Project Path="tests/EscritorioVirtual.UnitTests/EscritorioVirtual.UnitTests.csproj" />
+  </Folder>
 </Solution>

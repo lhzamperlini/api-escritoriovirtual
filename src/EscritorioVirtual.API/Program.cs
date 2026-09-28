@@ -15,6 +15,7 @@ builder.Configuration.AddEnvironmentVariables();
 
 // Add services to the container.
 builder.Services.AddControllers();
+builder.Services.AddSignalR();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -66,6 +67,7 @@ app.UseMiddleware<WorkspaceTenantMiddleware>();
 try
 {
     app.MapControllers();
+    app.MapHub<EscritorioVirtual.API.Hubs.OfficeHub>("/hubs/office");
     app.Run();
 }
 catch (System.Reflection.ReflectionTypeLoadException ex)

@@ -6,6 +6,7 @@ public class Usuario : BaseAggregateRoot<Guid>
     public string FullName { get; private set; } = string.Empty;
     public DateTime CreatedAt { get; private set; }
     public DateTime? LastLoginAt { get; private set; }
+    public string? AvatarConfig { get; private set; }
 
     protected Usuario() { }
 
@@ -15,6 +16,8 @@ public class Usuario : BaseAggregateRoot<Guid>
         Email = email;
         FullName = fullName;
         CreatedAt = DateTime.UtcNow;
+        DataCriacao = DateTime.UtcNow;
+        Status = true;
     }
 
     public void UpdateLastLogin()
@@ -26,5 +29,12 @@ public class Usuario : BaseAggregateRoot<Guid>
     {
         Email = email;
         FullName = fullName;
+        DataAtualizacao = DateTime.UtcNow;
+    }
+
+    public void UpdateAvatar(string avatarConfigJson)
+    {
+        AvatarConfig = avatarConfigJson;
+        DataAtualizacao = DateTime.UtcNow;
     }
 }

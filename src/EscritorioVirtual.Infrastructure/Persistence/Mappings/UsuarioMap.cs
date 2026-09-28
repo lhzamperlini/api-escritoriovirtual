@@ -32,6 +32,10 @@ public class UsuarioMap : IEntityTypeConfiguration<Usuario>
 
         builder.Property(x => x.LastLoginAt);
 
+        builder.Property(x => x.AvatarConfig)
+            .HasColumnType("jsonb")
+            .IsRequired(false);
+
         builder.HasOne(x => x.UsuarioCriacao)
             .WithMany()
             .HasForeignKey(x => x.UsuarioCriacaoId)
