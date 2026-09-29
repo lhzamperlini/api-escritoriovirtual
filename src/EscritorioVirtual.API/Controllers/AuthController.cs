@@ -58,8 +58,13 @@ public class AuthController(IConfiguration configuration) : ControllerBase
                      ?? User.FindFirst("email")?.Value 
                      ?? "";
 
+            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value 
+                      ?? User.FindFirst("sub")?.Value 
+                      ?? "";
+
             return Ok(new
             {
+                id = userId,
                 isAuthenticated = true,
                 name,
                 email,

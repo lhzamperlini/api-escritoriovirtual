@@ -24,22 +24,21 @@ public static class DatabaseInitializer
                 logger?.LogInformation("Banco de dados criado com sucesso.");
             }
 
-            try
+            var hasTables = await creator.HasTablesAsync();
+            if (!hasTables)
             {
                 await creator.CreateTablesAsync();
                 logger?.LogInformation("Tabelas do modelo EF Core criadas com sucesso.");
             }
-            catch
+            else
             {
-                // Se algumas tabelas já existem no banco, aplica a criação idempotente de tabelas faltantes
-                var ddlScript = context.Database.GenerateCreateScript();
-                var safeScript = ddlScript
-                    .Replace("CREATE TABLE ", "CREATE TABLE IF NOT EXISTS ")
-                    .Replace("CREATE INDEX ", "CREATE INDEX IF NOT EXISTS ")
-                    .Replace("CREATE UNIQUE INDEX ", "CREATE UNIQUE INDEX IF NOT EXISTS ");
-
-                await context.Database.ExecuteSqlRawAsync(safeScript);
-                logger?.LogInformation("Tabelas e índices verificados e criados com sucesso de forma idempotente.");
+                var pendingMigrations = await context.Database.GetPendingMigrationsAsync();
+                if (pendingMigrations.Any())
+                {
+                    logger?.LogInformation("Aplicando migrations pendentes...");
+                    await context.Database.MigrateAsync();
+                    logger?.LogInformation("Migrations aplicadas com sucesso.");
+                }
             }
         }
         catch (Exception ex)
