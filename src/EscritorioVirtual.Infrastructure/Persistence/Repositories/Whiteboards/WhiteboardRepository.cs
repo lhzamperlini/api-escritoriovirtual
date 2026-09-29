@@ -33,7 +33,7 @@ public class WhiteboardRepository(AppDbContext appDbContext)
         return whiteboard;
     }
 
-    public async Task UpdateAsync(Whiteboard whiteboard, CancellationToken cancellationToken = default)
+    public override async Task UpdateAsync(Whiteboard whiteboard, CancellationToken cancellationToken = default)
     {
         DbSet.Update(whiteboard);
         await AppDbContext.SaveChangesAsync(cancellationToken);
