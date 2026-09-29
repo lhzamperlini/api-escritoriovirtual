@@ -8,6 +8,7 @@ using Microsoft.Extensions.Configuration;
 
 namespace EscritorioVirtual.API.Controllers;
 
+[Route("api/[controller]")]
 public class WebRtcController(
     ILiveKitTokenService liveKitTokenService,
     IRoomAccessService roomAccessService,

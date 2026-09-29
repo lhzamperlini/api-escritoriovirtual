@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.SignalR;
 
 namespace EscritorioVirtual.API.Controllers;
 
+[Route("api/[controller]")]
 public class ChatController(
     ISender sender,
     IHubContext<OfficeHub, IOfficeHubClient> hubContext) : ApiControllerBase
